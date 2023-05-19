@@ -64,7 +64,6 @@ func doSomeOperations(client *ctrd.Client) error {
 	)
 
 	logrus.Infof("start to pull image")
-	// pull alpine image
 	_, err := client.Pull(context.Background(), imageName, ctrd.WithPullUnpack)
 	if err != nil {
 		logrus.Errorf("Unable to pull image: %v", err)
@@ -80,9 +79,7 @@ func doSomeOperations(client *ctrd.Client) error {
 		logrus.Infof("image id: %s, repo tags: %v", image.Name, image.Labels)
 	}
 
-	// create nginx container
 	logrus.Infof("create nginx container")
-
 	container, err := client.NewContainer(context.Background(),
 		containerName, ctrd.WithImageName(imageName),
 		ctrd.WithRuntime("io.containerd.runtime.v1.linux", nil),
@@ -101,22 +98,18 @@ func doSomeOperations(client *ctrd.Client) error {
 	}
 	defer task.Delete(context.Background())
 
-	// start nginx container
 	logrus.Infof("start nginx container")
 	err = task.Start(context.Background())
 	if err != nil {
 		return fmt.Errorf("Unable to start container: %v", err)
 	}
-
 	statusC, err := task.Wait(context.Background())
 	if err != nil {
 		return fmt.Errorf("failed to wait task: %v", err)
 	}
-
 	status := <-statusC
 	logrus.Infof("task status: %v\n", status)
 
-	// list containers
 	logrus.Infof("list containers")
 	containers, err := client.ContainerService().List(context.Background())
 	if err != nil {

@@ -10,6 +10,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
+// CreateSSHClient create ssh client
 func CreateSSHClient(hostPort, user, pwd, keyFile string) *ssh.Client {
 	logrus.Infof("start to dial ssh")
 	var auths []ssh.AuthMethod

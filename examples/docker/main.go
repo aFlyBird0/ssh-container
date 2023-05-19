@@ -65,10 +65,13 @@ func main() {
 }
 
 func doSomeOperations(dockerClient *client.Client) error {
-
+	const (
+		imageName     = "nginx"
+		containerName = "nginx"
+	)
 	logrus.Infof("start to pull image")
 	// pull alpine image
-	out, err := dockerClient.ImagePull(context.Background(), "nginx", types.ImagePullOptions{})
+	out, err := dockerClient.ImagePull(context.Background(), imageName, types.ImagePullOptions{})
 	if err != nil {
 		return fmt.Errorf("unable to pull image: %v", err)
 	}
@@ -96,23 +99,20 @@ func doSomeOperations(dockerClient *client.Client) error {
 		logrus.Infof("image id: %s, repo tags: %v", image.ID, image.RepoTags)
 	}
 
-	// create nginx container
 	logrus.Infof("create nginx container")
 	_, err = dockerClient.ContainerCreate(context.Background(),
 		&container.Config{Image: "nginx"},
-		nil, nil, nil, "nginx")
+		nil, nil, nil, containerName)
 	if err != nil {
 		logrus.Errorf("Unable to create container: %v", err)
 	}
 
-	// start nginx container
 	logrus.Infof("start nginx container")
-	err = dockerClient.ContainerStart(context.Background(), "nginx", types.ContainerStartOptions{})
+	err = dockerClient.ContainerStart(context.Background(), containerName, types.ContainerStartOptions{})
 	if err != nil {
 		logrus.Errorf("Unable to start container: %v", err)
 	}
 
-	// list containers
 	logrus.Infof("list containers")
 	containers, err := dockerClient.ContainerList(context.Background(), types.ContainerListOptions{})
 	if err != nil {

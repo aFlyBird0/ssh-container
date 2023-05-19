@@ -1,4 +1,4 @@
-package tunnel
+package main
 
 import (
 	"context"
@@ -22,7 +22,7 @@ func main() {
 	sshClient := util.CreateSSHClient(hostPort, user, pwd, keyFile)
 
 	// create a temporary docker socket file on local
-	localSocket := "~/sshcontainer/any_container.sock"
+	localSocket := "./.sock/any_container.sock"
 	remoteSocket := "/var/run/docker.sock" // change it to any socket path of your container
 	//remoteSocket := "/run/containerd/containerd.sock"
 

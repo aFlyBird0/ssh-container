@@ -17,12 +17,12 @@ const DefaultDockerSock = "/var/run/docker.sock"
 // ClientWithTunnel is docker client with tunnel
 type ClientWithTunnel struct {
 	*client.Client
+	dockerOpts []client.Opt
 
 	socketTunnel *tunnel.SocketTunnel
 
-	dockerOpts []client.Opt
-	maxRetry   uint
-	log        log.Logger
+	maxRetry uint
+	log      log.Logger
 }
 
 // Opt is option for ClientWithTunnel
@@ -106,6 +106,7 @@ func WithAutoRemoveLocalSocket(c *ClientWithTunnel) error {
 	return nil
 }
 
+// WithDisableLogger disable all logs
 func WithDisableLogger(c *ClientWithTunnel) error {
 	c.log = &log.NoopLogger{}
 	return nil

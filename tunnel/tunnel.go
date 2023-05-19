@@ -16,20 +16,22 @@ import (
 
 const unix = "unix"
 
+// SocketTunnel is a tunnel for unix socket
 type SocketTunnel struct {
 	localSocket           string
 	remoteSocket          string
 	autoRemoveLocalSocket bool
 	log                   log.Logger
+	sshClient             *ssh.Client
 
-	sshClient *ssh.Client
-	conns     []net.Conn
-	close     chan struct{}
-	isOpen    bool
-	done      chan struct{}
-	listener  net.Listener
+	conns    []net.Conn    // all connections
+	close    chan struct{} // close signal
+	isOpen   bool          // is tunnel open
+	done     chan struct{} // is all connection closed
+	listener net.Listener  // listener for local socket
 }
 
+// NewSocketTunnel create a new SocketTunnel
 func NewSocketTunnel(localSocket, remoteSocket string, sshClient *ssh.Client) *SocketTunnel {
 	return &SocketTunnel{
 		localSocket:  localSocket,
@@ -41,21 +43,25 @@ func NewSocketTunnel(localSocket, remoteSocket string, sshClient *ssh.Client) *S
 	}
 }
 
+// SetLogger set custom logger
 func (tunnel *SocketTunnel) SetLogger(logger log.Logger) *SocketTunnel {
 	tunnel.log = logger
 	return tunnel
 }
 
+// AutoRemoveLocalSocket remove local socket before start/close tunnel
 func (tunnel *SocketTunnel) AutoRemoveLocalSocket() *SocketTunnel {
 	tunnel.autoRemoveLocalSocket = true
 	return tunnel
 }
 
+// DisableLogger disable all logs
 func (tunnel *SocketTunnel) DisableLogger() *SocketTunnel {
 	tunnel.log = &log.NoopLogger{}
 	return tunnel
 }
 
+// Start tunnel, you should call this method in a goroutine
 func (tunnel *SocketTunnel) Start() (err error) {
 	// mkdir -p if not exists
 	if err = os.MkdirAll(filepath.Dir(tunnel.localSocket), 0755); err != nil {
@@ -92,7 +98,7 @@ func (tunnel *SocketTunnel) Start() (err error) {
 
 		select {
 		case <-tunnel.close:
-			// 接收到中断信号，终止程序
+			// close signal received
 			tunnel.log.Debugf("received close signal\n")
 			tunnel.isOpen = false
 		case conn := <-c:
@@ -114,6 +120,7 @@ func (tunnel *SocketTunnel) Start() (err error) {
 	return nil
 }
 
+// forward connection to remote socket
 func (tunnel *SocketTunnel) forward(local net.Conn) error {
 	// Issue a dial to the remote server on our SSH client; here "localhost"
 	// refers to the remote server.
@@ -126,28 +133,7 @@ func (tunnel *SocketTunnel) forward(local net.Conn) error {
 	return nil
 }
 
-func (tunnel *SocketTunnel) Stop() {
-	tunnel.close <- struct{}{}
-	close(tunnel.close)
-
-	if err := tunnel.removeLocalSocket(); err != nil {
-		tunnel.log.Errorf("failed to remove local socket file: %v", err)
-	}
-
-	// ensure all connections are closed
-	<-tunnel.done
-}
-
-func (tunnel *SocketTunnel) newConnectionWaiter(listener net.Listener, c chan net.Conn) {
-	tunnel.log.Debugf("waiting for new connection\n")
-	conn, err := listener.Accept()
-	if err != nil && !errors.Is(err, net.ErrClosed) {
-		tunnel.log.Errorf("failed to accept connection: %v\n", err)
-		return
-	}
-	c <- conn
-}
-
+// runTunnel copies data between local and remote
 func runTunnel(local, remote net.Conn) {
 	defer local.Close()
 	defer remote.Close()
@@ -164,6 +150,30 @@ func runTunnel(local, remote net.Conn) {
 	}()
 
 	<-done
+}
+
+// newConnectionWaiter waits for new connection
+func (tunnel *SocketTunnel) newConnectionWaiter(listener net.Listener, c chan net.Conn) {
+	tunnel.log.Debugf("waiting for new connection\n")
+	conn, err := listener.Accept()
+	if err != nil && !errors.Is(err, net.ErrClosed) {
+		tunnel.log.Errorf("failed to accept connection: %v\n", err)
+		return
+	}
+	c <- conn
+}
+
+// Stop tunnel, blocking method
+func (tunnel *SocketTunnel) Stop() {
+	tunnel.close <- struct{}{}
+	close(tunnel.close)
+
+	if err := tunnel.removeLocalSocket(); err != nil {
+		tunnel.log.Errorf("failed to remove local socket file: %v", err)
+	}
+
+	// ensure all connections are closed
+	<-tunnel.done
 }
 
 // remove localSocket if exists

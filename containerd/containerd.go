@@ -20,10 +20,12 @@ const DefaultContainerdSocket = "/run/containerd/containerd.sock"
 // ClientWithTunnel is containerd client with tunnel
 type ClientWithTunnel struct {
 	*containerd.Client
-	socketTunnel   *tunnel.SocketTunnel
 	containerdOpts []containerd.ClientOpt
-	maxRetry       uint
-	log            log.Logger
+
+	socketTunnel *tunnel.SocketTunnel
+
+	maxRetry uint
+	log      log.Logger
 }
 
 // Opt is option for ClientWithTunnel
